@@ -6,12 +6,35 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { findNearestAirport } from './airportLookup.js';
 
-dotenv.config();
+// Vercel injects env at runtime; skip dotenv so a stray empty .env never shadows keys.
+if (!process.env.VERCEL) {
+  dotenv.config();
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
-const OPENWEATHER_KEY = process.env.OPENWEATHER_API_KEY;
-const AVIATION_KEY = process.env.AVIATIONSTACK_ACCESS_KEY;
+
+/** Read at use time so serverless always sees Vercel env (not a stale import-time snapshot). */
+function envTrim(name) {
+  const v = process.env[name];
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  return s || '';
+}
+
+function openWeatherKey() {
+  return (
+    envTrim('OPENWEATHER_API_KEY') ||
+    envTrim('OPENWEATHER_KEY')
+  );
+}
+
+function aviationKey() {
+  return (
+    envTrim('AVIATIONSTACK_ACCESS_KEY') ||
+    envTrim('AVIATION_STACK_ACCESS_KEY')
+  );
+}
 
 const app = express();
 app.use(cors());
@@ -25,8 +48,10 @@ function missingEnvMessage(name) {
 }
 
 function requireKeys(res) {
-  if (!OPENWEATHER_KEY) {
-    res.status(500).json({ error: missingEnvMessage('OPENWEATHER_API_KEY') });
+  if (!openWeatherKey()) {
+    res.status(500).json({
+      error: missingEnvMessage('OPENWEATHER_API_KEY'),
+    });
     return false;
   }
   return true;
@@ -365,7 +390,7 @@ app.get('/api/geocode', async (req, res) => {
   const url = new URL('https://api.openweathermap.org/geo/1.0/direct');
   url.searchParams.set('q', q);
   url.searchParams.set('limit', '1');
-  url.searchParams.set('appid', OPENWEATHER_KEY);
+  url.searchParams.set('appid', openWeatherKey());
   try {
     const r = await fetch(url);
     const data = await r.json();
@@ -400,8 +425,8 @@ app.get('/api/weather', async (req, res) => {
   const base = 'https://api.openweathermap.org/data/2.5';
   try {
     const [curR, fcR] = await Promise.all([
-      fetch(`${base}/weather?lat=${lat}&lon=${lon}&units=${units}&appid=${OPENWEATHER_KEY}`),
-      fetch(`${base}/forecast?lat=${lat}&lon=${lon}&units=${units}&appid=${OPENWEATHER_KEY}`),
+      fetch(`${base}/weather?lat=${lat}&lon=${lon}&units=${units}&appid=${openWeatherKey()}`),
+      fetch(`${base}/forecast?lat=${lat}&lon=${lon}&units=${units}&appid=${openWeatherKey()}`),
     ]);
     const current = await curR.json();
     const forecast = await fcR.json();
@@ -446,7 +471,7 @@ async function fetchFlightsWithFilters(filters) {
   const attempts = [null, 'scheduled', 'active'];
   for (const status of attempts) {
     const flightsUrl = new URL('https://api.aviationstack.com/v1/flights');
-    flightsUrl.searchParams.set('access_key', AVIATION_KEY);
+    flightsUrl.searchParams.set('access_key', aviationKey());
     flightsUrl.searchParams.set('limit', '100');
     for (const [key, val] of Object.entries(filters)) {
       if (val != null && val !== '') flightsUrl.searchParams.set(key, String(val));
@@ -477,8 +502,10 @@ function hubNote(resolved, cityLabel) {
 
 /** Start + destination hubs: nonstop A→B first, then 1-stop via hub if needed (40min–16h layover). */
 app.get('/api/flights', async (req, res) => {
-  if (!AVIATION_KEY) {
-    return res.status(500).json({ error: missingEnvMessage('AVIATIONSTACK_ACCESS_KEY') });
+  if (!aviationKey()) {
+    return res.status(500).json({
+      error: missingEnvMessage('AVIATIONSTACK_ACCESS_KEY'),
+    });
   }
   const depCity = String(req.query.depCity || '').trim();
   const depCountry = String(req.query.depCountry || '').trim();
