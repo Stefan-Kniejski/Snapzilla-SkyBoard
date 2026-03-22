@@ -2,6 +2,10 @@
 
 A simple travel dashboard: enter a **start city** and a **destination**, then see a **route map**, **weather at the destination**, a **multi-day outlook**, and up to **10 US-airline options** — **nonstop** between hubs first, then **one-stop** layovers if needed (the fastest total-time option is highlighted; **fares are not available** from the flight API).
 
+## Projects
+
+- **Snapzilla SkyBoard** (live) — [https://skyapp-tawny.vercel.app/](https://skyapp-tawny.vercel.app/)
+
 ---
 
 ## What you get

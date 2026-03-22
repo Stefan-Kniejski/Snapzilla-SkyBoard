@@ -1,5 +1,6 @@
 {
   "name": "snapzilla-skyboard",
+  "homepage": "https://skyapp-tawny.vercel.app/",
   "private": true,
   "version": "1.0.0",
   "type": "module",
