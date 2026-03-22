@@ -17,9 +17,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+function missingEnvMessage(name) {
+  if (process.env.VERCEL) {
+    return `Missing ${name}. In Vercel: Project → Settings → Environment Variables, add ${name} for Production (and Preview if needed), then redeploy.`;
+  }
+  return `Missing ${name}. Copy .env.example to .env and set the value (do not commit .env).`;
+}
+
 function requireKeys(res) {
   if (!OPENWEATHER_KEY) {
-    res.status(500).json({ error: 'Missing OPENWEATHER_API_KEY in .env' });
+    res.status(500).json({ error: missingEnvMessage('OPENWEATHER_API_KEY') });
     return false;
   }
   return true;
@@ -471,7 +478,7 @@ function hubNote(resolved, cityLabel) {
 /** Start + destination hubs: nonstop A→B first, then 1-stop via hub if needed (40min–16h layover). */
 app.get('/api/flights', async (req, res) => {
   if (!AVIATION_KEY) {
-    return res.status(500).json({ error: 'Missing AVIATIONSTACK_ACCESS_KEY in .env' });
+    return res.status(500).json({ error: missingEnvMessage('AVIATIONSTACK_ACCESS_KEY') });
   }
   const depCity = String(req.query.depCity || '').trim();
   const depCountry = String(req.query.depCountry || '').trim();
