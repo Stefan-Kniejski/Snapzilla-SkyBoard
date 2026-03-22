@@ -745,17 +745,22 @@ app.get('/api/flights', async (req, res) => {
   }
 });
 
-const distPath = path.join(__dirname, '../dist');
-if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(distPath, 'index.html'), (err) => {
-      if (err) next();
+// Vercel runs the UI as static files and APIs via serverless (see api/server.js).
+if (!process.env.VERCEL) {
+  const distPath = path.join(__dirname, '../dist');
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(distPath, 'index.html'), (err) => {
+        if (err) next();
+      });
     });
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Snapzilla SkyBoard API on http://localhost:${PORT}`);
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Snapzilla SkyBoard API on http://localhost:${PORT}`);
-});
+export default app;
